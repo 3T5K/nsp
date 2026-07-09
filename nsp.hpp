@@ -22,10 +22,8 @@
  */
 
 // TODO:
-//      comparison
 //      pointer arithmetic
 //      deal with these meta funcitons
-//      to_address
 
 #ifndef LIB_NSP_HPP
 #define LIB_NSP_HPP
@@ -34,6 +32,7 @@
 #include <type_traits>
 #include <concepts>
 #include <memory>
+#include <compare>
 
 namespace nsp
 {
@@ -41,7 +40,9 @@ namespace nsp
 struct NullPtrDeref : std::exception
 {
     [[nodiscard]] auto what() const noexcept -> const char * override
-    { return "null pointer dereference attempted"; }
+    {
+        return "null pointer dereference attempted";
+    }
 };
 
 template <typename From, typename To>
@@ -51,30 +52,26 @@ concept PtrConvTo = std::convertible_to< std::add_pointer_t<From>
 template <template <typename> class Derived, typename ElemType>
 struct Deref
 {
-    using derived_reference = std::add_lvalue_reference_t<
-                                std::add_const_t<Derived<ElemType>>>;
-
-    [[nodiscard]] constexpr auto operator*() const -> ElemType &
-    {
-        ElemType *ptr = static_cast<derived_reference>(*this).ptr;
-        if (ptr == nullptr) {
-            throw NullPtrDeref{};
-        }
-
-        return *ptr;
-    }
-
-    [[nodiscard]] constexpr auto value() const -> ElemType &
-    { return this->operator*(); }
+    using derived_reference = std::add_lvalue_reference_t<std::add_const_t<Derived<ElemType>>>;
 
     [[nodiscard]] constexpr auto operator->() const -> ElemType *
     {
-        ElemType *ptr = static_cast<derived_reference>(*this).ptr;
+        ElemType *const ptr = static_cast<derived_reference>(*this).ptr;
         if (ptr == nullptr) {
             throw NullPtrDeref{};
         }
 
         return ptr;
+    }
+
+    [[nodiscard]] constexpr auto operator*() const -> ElemType &
+    {
+        return *this->operator->();
+    }
+
+    [[nodiscard]] constexpr auto value() const -> ElemType &
+    {
+        return this->operator*();
     }
 };
 
@@ -85,61 +82,103 @@ struct Deref<Derived, ElemType> { };
 template <template <typename> class Derived, typename ElemType>
 struct PointerTo
 {
-    [[nodiscard]] static constexpr auto pointer_to(ElemType &v) noexcept
-        -> Derived<ElemType>
-    { return std::addressof(v); }
+    [[nodiscard]] static constexpr auto pointer_to(ElemType &v) noexcept -> Derived<ElemType>
+    {
+        return std::addressof(v);
+    }
 };
 
 template <template <typename> class Derived, typename VoidTp>
     requires std::is_void_v<VoidTp>
 struct PointerTo<Derived, VoidTp>
 {
-    [[nodiscard]] static constexpr auto pointer_to(PtrConvTo<VoidTp> auto &v)
-        noexcept -> Derived<VoidTp>
-    { return std::addressof(v); }
+    [[nodiscard]] static constexpr auto pointer_to(PtrConvTo<VoidTp> auto &v) noexcept -> Derived<VoidTp>
+    {
+        return std::addressof(v);
+    }
 };
 
 template <typename T>
     requires (!std::is_reference_v<T>)
 struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
 {
-    using element_type = T;
+    using element_type    = T;
+    using pointer         = element_type *;
     using difference_type = std::ptrdiff_t;
 
     template <typename U>
     using rebind = NullSafePtr<U>;
 
-    element_type *ptr;
+    pointer ptr;
 
-    [[nodiscard]] constexpr NullSafePtr(element_type *const p) noexcept
-        : ptr{p} { }
+    [[nodiscard]] constexpr NullSafePtr(pointer const p) noexcept
+        : ptr{p}
+    { }
 
     [[nodiscard]] constexpr NullSafePtr(std::nullptr_t) noexcept
-        : ptr{nullptr} { }
+        : ptr{nullptr}
+    { }
 
     [[nodiscard]] constexpr NullSafePtr() noexcept
-        : ptr{nullptr} { }
+        : ptr{nullptr}
+    { }
 
     template <PtrConvTo<element_type> U>
     [[nodiscard]] constexpr NullSafePtr(const NullSafePtr<U> nsp) noexcept
         : ptr{nsp.ptr} { }
 
-    [[nodiscard]] constexpr explicit operator element_type *() const noexcept
-    { return ptr; }
+    [[nodiscard]] constexpr explicit operator pointer() const noexcept
+    {
+        return ptr;
+    }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept
-    { return ptr; }
+    {
+        return static_cast<bool>(ptr);
+    }
 
     [[nodiscard]] constexpr auto has_value() const noexcept
-    { return ptr; }
+    {
+        return ptr != nullptr;
+    }
 
-    [[nodiscard]] constexpr auto as_const() const noexcept
-        -> NullSafePtr<std::add_const_t<element_type>>
+    [[nodiscard]] constexpr auto is_null() const noexcept
+    {
+        return ptr == nullptr;
+    }
+
+    [[nodiscard]] constexpr auto as_const() const noexcept -> NullSafePtr<std::add_const_t<element_type>>
         requires (!std::is_const_v<element_type>)
-    { return ptr; }
+    {
+        return ptr;
+    }
 
-    [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> element_type *
-    { return p.ptr; }
+    [[nodiscard]] constexpr auto operator==(const NullSafePtr &oth) const noexcept -> bool
+    {
+        return ptr == oth.ptr;
+    };
+
+    [[nodiscard]] constexpr auto operator==(std::nullptr_t) const noexcept -> bool
+    {
+        return ptr == nullptr;
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(const NullSafePtr &oth) const noexcept
+        -> std::compare_three_way_result_t<pointer>
+    {
+        return std::compare_three_way(ptr, oth.ptr);
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(std::nullptr_t) const noexcept
+        -> std::compare_three_way_result_t<pointer>
+    {
+        return std::compare_three_way(ptr, nullptr);
+    }
+
+    [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> pointer
+    {
+        return p.ptr;
+    }
 };
 
 } // namespace utils::nsp
@@ -159,7 +198,7 @@ struct std::pointer_traits<nsp::NullSafePtr<T>>
         return pointer::pointer_to(r);
     }
 
-    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> element_type *
+    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> pointer
     {
         return pointer::to_address(p);
     }
