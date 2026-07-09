@@ -137,8 +137,32 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
         -> NullSafePtr<std::add_const_t<element_type>>
         requires (!std::is_const_v<element_type>)
     { return ptr; }
+
+    [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> element_type *
+    { return p.ptr; }
 };
 
 } // namespace utils::nsp
+
+template <typename T>
+struct std::pointer_traits<nsp::NullSafePtr<T>>
+{
+    using pointer         = nsp::NullSafePtr<T>;
+    using element_type    = typename pointer::element_type;
+    using difference_type = typename pointer::difference_type;
+    
+    template <typename U>
+    using rebind = typename pointer::template rebind<U>;
+
+    [[nodiscard]] static constexpr auto pointer_to(element_type &r) noexcept -> pointer
+    {
+        return pointer::pointer_to(r);
+    }
+
+    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> element_type *
+    {
+        return pointer::to_address(p);
+    }
+};
 
 #endif // LIB_NSP_HPP
