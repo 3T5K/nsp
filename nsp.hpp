@@ -180,7 +180,7 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
     }
 };
 
-} // namespace utils::nsp
+} // namespace nsp
 
 template <typename T>
 struct std::pointer_traits<nsp::NullSafePtr<T>>
