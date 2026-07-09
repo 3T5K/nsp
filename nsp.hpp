@@ -21,10 +21,6 @@
  *  OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-// TODO:
-//      pointer arithmetic
-//      deal with these meta funcitons
-
 #ifndef LIB_NSP_HPP
 #define LIB_NSP_HPP
 
@@ -103,15 +99,16 @@ template <typename T>
 struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
 {
     using element_type    = T;
-    using pointer         = element_type *;
+    using pointer         = NullSafePtr;
+    using raw_pointer     = element_type *;
     using difference_type = std::ptrdiff_t;
 
     template <typename U>
     using rebind = NullSafePtr<U>;
 
-    pointer ptr;
+    raw_pointer ptr;
 
-    [[nodiscard]] constexpr NullSafePtr(pointer const p) noexcept
+    [[nodiscard]] constexpr NullSafePtr(raw_pointer const p) noexcept
         : ptr{p}
     { }
 
@@ -125,9 +122,10 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
 
     template <PtrConvTo<element_type> U>
     [[nodiscard]] constexpr NullSafePtr(const NullSafePtr<U> nsp) noexcept
-        : ptr{nsp.ptr} { }
+        : ptr{nsp.ptr}
+    { }
 
-    [[nodiscard]] constexpr explicit operator pointer() const noexcept
+    [[nodiscard]] constexpr explicit operator raw_pointer() const noexcept
     {
         return ptr;
     }
@@ -147,7 +145,8 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
         return ptr == nullptr;
     }
 
-    [[nodiscard]] constexpr auto as_const() const noexcept -> NullSafePtr<std::add_const_t<element_type>>
+    [[nodiscard]] constexpr auto as_const() const noexcept
+        -> NullSafePtr<std::add_const_t<element_type>>
         requires (!std::is_const_v<element_type>)
     {
         return ptr;
@@ -164,18 +163,18 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
     }
 
     [[nodiscard]] constexpr auto operator<=>(const NullSafePtr &oth) const noexcept
-        -> std::compare_three_way_result_t<pointer>
+        -> std::compare_three_way_result_t<raw_pointer>
     {
         return std::compare_three_way(ptr, oth.ptr);
     }
 
     [[nodiscard]] constexpr auto operator<=>(std::nullptr_t) const noexcept
-        -> std::compare_three_way_result_t<pointer>
+        -> std::compare_three_way_result_t<raw_pointer>
     {
         return std::compare_three_way(ptr, nullptr);
     }
 
-    [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> pointer
+    [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> raw_pointer
     {
         return p.ptr;
     }
