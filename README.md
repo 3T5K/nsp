@@ -79,7 +79,7 @@ nsp::NullSafePtr<void> p4{&x};       // ok
 ```
 
 Derived class pointer to base class pointer conversions work as expected too.
-```
+```cpp
 Derived b;
 nsp::NullSafePtr<Derived> p1{&b};
 nsp::NullSafePtr<Base> p2{p1};        // ok
@@ -89,7 +89,7 @@ nsp::NullSafePtr<Derived> p5{p3.ptr}; // compile-time error
 ```
 
 Direct conversion to a different non-void or non-base class pointer type (ignoring cv-qualification) is not allowed.
-```
+```cpp
 int x = 10;
 nsp::NullSafePtr<int> p1{&x};
 nsp::NullSafePtr<float> p2{p1}; // compile-time error
@@ -98,13 +98,13 @@ nsp::NullSafePtr<float> p4{p3}; // compile-time error
 ```
 
 The safe-bool idiom is followed.
-```
+```cpp
 bool x = NullSafePtr<void>{}; // compile-time error
 ```
 
 Conversions to the respective raw pointer type are explicit.
 This is mainly to prevent accidental pointer arithmetic.
-```
+```cpp
 nsp::NullSafePtr<int> p;
 int *x = p + 10;                     // compile-time error
 int *y = static_cast<int *>(p) + 10; // ok
