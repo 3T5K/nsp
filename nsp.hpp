@@ -108,7 +108,7 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
 
     raw_pointer ptr;
 
-    [[nodiscard]] constexpr NullSafePtr(raw_pointer const p) noexcept
+    [[nodiscard]] constexpr NullSafePtr(const raw_pointer p) noexcept
         : ptr{p}
     { }
 
