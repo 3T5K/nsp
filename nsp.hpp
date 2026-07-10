@@ -1,5 +1,5 @@
 /*
- *  nsp.hpp - A constexpr fancy pointer providing automatic null initialization/checks.
+ *  nsp.hpp - A constexpr fancy pointer for C++20 providing automatic null initialization/checks.
  *
  *  Copyright (c) 2026 3T5K
  *
@@ -48,11 +48,9 @@ concept PtrConvTo = std::convertible_to< std::add_pointer_t<From>
 template <template <typename> class Derived, typename ElemType>
 struct Deref
 {
-    using derived_reference = std::add_lvalue_reference_t<std::add_const_t<Derived<ElemType>>>;
-
     [[nodiscard]] constexpr auto operator->() const -> ElemType *
     {
-        ElemType *const ptr = static_cast<derived_reference>(*this).ptr;
+        ElemType *const ptr = static_cast<const Derived<ElemType> &>(*this).ptr;
         if (ptr == nullptr) {
             throw NullPtrDeref{};
         }
