@@ -14,8 +14,7 @@ A single header null-safe pointer library for C++20.
 
 **Does not support:**
  - pointer arithmetic
- - pointers to members (MAYBE)
- - explicit void pointer conversions to a different type (TODO)
+ - pointers to members
 
 ## Motivation
 
