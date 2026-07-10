@@ -92,9 +92,34 @@ struct PointerTo<Derived, VoidTp>
     }
 };
 
+/*
+ * Maybe these should be non-member overloads as is customary in the stdlib.
+ */
+template <template <typename> class Derived, typename ElemType>
+struct Cmp3Way
+{
+    [[nodiscard]] constexpr auto operator<=>(const Derived<ElemType> &oth) const noexcept
+        -> std::compare_three_way_result_t<ElemType *>
+    {
+        return std::compare_three_way(
+            static_cast<const Derived<ElemType> &>(*this).ptr, oth.ptr);
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(std::nullptr_t) const noexcept
+        -> std::compare_three_way_result_t<ElemType *>
+    {
+        return std::compare_three_way(
+            static_cast<const Derived<ElemType> &>(*this).ptr, nullptr);
+    }
+};
+
+template <template <typename> class Derived, typename ElemType>
+    requires (!std::three_way_comparable<ElemType *>)
+struct Cmp3Way<Derived, ElemType> { };
+
 template <typename T>
     requires (!std::is_reference_v<T>)
-struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
+struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>, Cmp3Way<NullSafePtr, T>
 {
     using element_type    = T;
     using pointer         = NullSafePtr;
@@ -158,18 +183,6 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
     [[nodiscard]] constexpr auto operator==(std::nullptr_t) const noexcept -> bool
     {
         return ptr == nullptr;
-    }
-
-    [[nodiscard]] constexpr auto operator<=>(const NullSafePtr &oth) const noexcept
-        -> std::compare_three_way_result_t<raw_pointer>
-    {
-        return std::compare_three_way(ptr, oth.ptr);
-    }
-
-    [[nodiscard]] constexpr auto operator<=>(std::nullptr_t) const noexcept
-        -> std::compare_three_way_result_t<raw_pointer>
-    {
-        return std::compare_three_way(ptr, nullptr);
     }
 
     [[nodiscard]] static auto to_address(const NullSafePtr p) noexcept -> raw_pointer

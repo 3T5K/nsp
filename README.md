@@ -14,7 +14,6 @@ A single header null-safe pointer library for C++20.
 
 **Does not support:**
  - pointer arithmetic
- - function pointers (TODO)
  - pointers to members (MAYBE)
  - explicit void pointer conversions to a different type (TODO)
  - void pointer pointer_traits are probably not working (TODO)
@@ -126,6 +125,19 @@ However, they do support:
 ```cpp
 nsp::NullSafePtr<void> p1;
 void *p2 = &(*p1)          // compile-time error
+```
+
+### Function Pointers
+
+A function pointer constitutes any specialization `nsp::NullSafePtr<T>` for which `std::is_function_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
+
+Function pointers don't support three way comparison.
+Equality comparison is supported.
+```cpp
+nsp::NullSafePtr<void()> p1{};
+nsp::NullSafePtr<void()> p2{};
+bool x = p1 == p2;             // ok
+auto y = p1 <=> p2;            // compile-time error
 ```
 
 ### Other Members
