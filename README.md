@@ -21,7 +21,7 @@ A single header null-safe pointer library for C++20.
 
 ## Motivation
 
-I wanted a type that can have an empty state or view, but not own, an object with static storage duration.
+I wanted a type that can have an empty state or view an object with static storage duration.
 Raw pointers are a decent abstraction for this, but dereferencing their "empty state" leads to UB.
 With user-space software, that means segfaults in practice, which are not nice to deal with obviously.
 
