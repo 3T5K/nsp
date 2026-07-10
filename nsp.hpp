@@ -94,6 +94,7 @@ struct PointerTo<Derived, VoidTp>
 
 /*
  * Maybe these should be non-member overloads as is customary in the stdlib.
+ * Could result in better errors.
  */
 template <template <typename> class Derived, typename ElemType>
 struct Cmp3Way
@@ -168,8 +169,7 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>, Cmp3Way<N
         return ptr == nullptr;
     }
 
-    [[nodiscard]] constexpr auto as_const() const noexcept
-        -> NullSafePtr<std::add_const_t<element_type>>
+    [[nodiscard]] constexpr auto as_const() const noexcept -> NullSafePtr<std::add_const_t<element_type>>
         requires (!std::is_const_v<element_type>)
     {
         return ptr;
@@ -194,7 +194,7 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>, Cmp3Way<N
 } // namespace nsp
 
 template <typename T>
-struct std::pointer_traits<nsp::NullSafePtr<T>>
+struct std::pointer_traits<nsp::NullSafePtr<T>> : nsp::PointerTo<nsp::NullSafePtr, T>
 {
     using pointer         = nsp::NullSafePtr<T>;
     using element_type    = typename pointer::element_type;
@@ -203,12 +203,7 @@ struct std::pointer_traits<nsp::NullSafePtr<T>>
     template <typename U>
     using rebind = typename pointer::template rebind<U>;
 
-    [[nodiscard]] static constexpr auto pointer_to(element_type &r) noexcept -> pointer
-    {
-        return pointer::pointer_to(r);
-    }
-
-    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> pointer
+    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> element_type *
     {
         return pointer::to_address(p);
     }
