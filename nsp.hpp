@@ -29,6 +29,7 @@
 #include <concepts>
 #include <memory>
 #include <compare>
+#include <functional>
 
 namespace nsp
 {
@@ -157,6 +158,14 @@ struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>, Cmp3Way<N
     [[nodiscard]] constexpr explicit operator bool() const noexcept
     {
         return static_cast<bool>(ptr);
+    }
+
+    template <typename... Args>
+        requires std::invocable<element_type, Args...>
+    [[nodiscard]] constexpr auto operator()(Args&&... args) const
+        -> std::invoke_result_t<element_type, Args...>
+    {
+        return std::invoke(this->operator->(), std::forward<Args>(args)...);
     }
 
     [[nodiscard]] constexpr auto has_value() const noexcept

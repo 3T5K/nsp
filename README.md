@@ -4,8 +4,9 @@ A single header null-safe pointer library for C++20.
 
 **Features:**
  - `nullptr` default initialization
- - null checked dereferencing
- - errors as exceptions
+ - null-checked dereferencing (uses exceptions)
+ - non-owning semantics
+ - same size as a raw pointer
  - full constexpr support
  - liberal use of `[[nodiscard]]`
  - `noexcept` everywhere it should be
@@ -20,19 +21,17 @@ A single header null-safe pointer library for C++20.
 
 I wanted a type that can have an empty state or view an object with static storage duration.
 Raw pointers are a decent abstraction for this, but dereferencing their "empty state" leads to UB.
-With user-space software, that means segfaults in practice, which are not nice to deal with obviously.
+With modern OSes, that means segfaults in practice, which are obviously not nice to deal with.
 
 Then there is `std::optional<std::reference_wrapper<T>>`.
 You get a checked accessor, default initialization to its empty state, and pointer-like assignment.
 The problem is the space it takes up.
-Implemenations of `std::optional<T>` are usually `alignof(T) + sizeof(T)` bytes.
+Implemenations of `std::optional<T>` are **usually** `alignof(T) + sizeof(T)` bytes.
 A `std::reference_wrapper` is just a wrapper over a raw pointer.
 So on systems with 64b pointers, that `optional` would take up `8 + 8` bytes.
-That's 8 more bytes than a pointer for `optional`s bookkeeping
+That's 8 more bytes than a pointer for `optional`'s bookkeeping
 (which is 1 byte in practice of which 1 bit is actually used)
 and padding to preserve alignment.
-
-So the correct and optimal abstraction is probably a fancy pointer like this one.
 
 ## Demo
 
@@ -66,7 +65,7 @@ auto p2 = p1.as_const();      // ok, produces nsp::NullSafePtr<const int>
 auto p3 = p2.as_const();      // compile-time error, p2 is already a pointer to const
 ```
 
-Conversions to equaly or more qualified void pointers are allowed aswell.
+Conversions to equally or more qualified void pointers are allowed as well.
 ```cpp
 int x = 10;
 nsp::NullSafePtr<int> p1{&x};
@@ -94,9 +93,9 @@ nsp::NullSafePtr<void> p3{&x};
 nsp::NullSafePtr<float> p4{p3}; // compile-time error
 ```
 
-The safe-bool idiom is followed.
+Implicit conversions to bool are disallowed.
 ```cpp
-bool x = NullSafePtr<void>{}; // compile-time error
+bool x = nsp::NullSafePtr<void>{}; // compile-time error
 ```
 
 Conversions to the respective raw pointer type are explicit.
@@ -138,9 +137,17 @@ bool x = p1 == p2;             // ok
 auto y = p1 <=> p2;            // compile-time error
 ```
 
+The call operator is also overloaded and uses `std::invoke` internally.
+```cpp
+nsp::NullSafePtr<int(int)> p1{&func};
+nsp::NullSafePtr<int(int)> p2;
+int x = p1(10);                       // ok
+int y = p2(10);                       // throws nsp::NullPtrDeref
+```
+
 ### Other Members
 
-All `std::pointer_traits<nsp::NullSafePtr<T>>` members are also exposed in `nsp::NullSafePtr<T>` itself.
+The relevant `std::pointer_traits<nsp::NullSafePtr<T>>` members are also exposed in `nsp::NullSafePtr<T>` itself.
  - `nsp::NullSafePtr<T>::element_type`
  - `nsp::NullSafePtr<T>::difference_type`
  - `nsp::NullSafePtr<T>::pointer`
@@ -156,7 +163,7 @@ Additional member functions:
  - `nsp::NullSafePtr<T>::has_value()`
  - `nsp::NullSafePtr<T>::value()` => invokes `operator*()`
 
-Comparision functions:
+Comparison functions:
  - `nsp::NullSafePtr<T>::operator==(const NullSafePtr &)`
  - `nsp::NullSafePtr<T>::operator==(std::nullptr_t)`
  - `nsp::NullSafePtr<T>::operator<=>(const NullSafePtr &)`
