@@ -103,14 +103,14 @@ struct Cmp3Way
     [[nodiscard]] constexpr auto operator<=>(const Derived<ElemType> &oth) const noexcept
         -> std::compare_three_way_result_t<ElemType *>
     {
-        return std::compare_three_way(
+        return std::compare_three_way{}(
             static_cast<const Derived<ElemType> &>(*this).ptr, oth.ptr);
     }
 
     [[nodiscard]] constexpr auto operator<=>(std::nullptr_t) const noexcept
         -> std::compare_three_way_result_t<ElemType *>
     {
-        return std::compare_three_way(
+        return std::compare_three_way{}(
             static_cast<const Derived<ElemType> &>(*this).ptr, nullptr);
     }
 };
