@@ -79,6 +79,42 @@ struct Deref<Derived, ElemType>
     void value()      = delete;
 };
 
+template <template <typename> class, typename>
+struct DerefMemPtr { };
+
+template <template <typename> class Derived, typename ElemType>
+    requires std::is_class_v<ElemType>
+          || std::is_union_v<ElemType>
+struct DerefMemPtr<Derived, ElemType>
+{
+    template <typename T>
+    [[nodiscard]] constexpr auto operator->*(T ElemType::*p) const -> T &
+    {
+        if (p == nullptr) {
+            throw NullPtrDeref{};
+        }
+
+        return static_cast<const Derived<ElemType> &>(*this).operator->()->*p;
+    }
+
+    template <typename T>
+        requires std::is_function_v<T>
+    [[nodiscard]] constexpr auto operator->*(T ElemType::*mfn) const noexcept -> auto
+    {
+        return [nsp{static_cast<const Derived<ElemType> &>(*this)}, mfn]
+            <typename... Args> (Args&&... args)
+            -> std::invoke_result_t<T ElemType::*, ElemType *, Args...>
+            requires std::invocable<T ElemType::*, ElemType *, Args...>
+        {
+            if (mfn == nullptr) {
+                throw NullPtrDeref{};
+            }
+
+            return std::invoke(mfn, nsp.operator->(), std::forward<Args>(args)...);
+        };
+    }
+};
+
 template <template <typename> class Derived, typename ElemType>
 struct PointerTo
 {
@@ -100,7 +136,9 @@ struct PointerTo<Derived, VoidTp>
 
 template <typename T>
     requires (!std::is_reference_v<T>)
-struct NullSafePtr : Deref<NullSafePtr, T>, PointerTo<NullSafePtr, T>
+struct NullSafePtr : Deref<NullSafePtr, T>
+                   , DerefMemPtr<NullSafePtr, T>
+                   , PointerTo<NullSafePtr, T>
 {
     using element_type    = T;
     using pointer         = NullSafePtr;

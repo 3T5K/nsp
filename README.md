@@ -15,20 +15,22 @@ A single header null-safe pointer library for C++20.
 
 **Does not support:**
  - pointer arithmetic
- - pointers to members
+ - representing pointers to members
 
 ## Motivation
 
-I wanted a type that can have an empty state or view an object with static storage duration.
-Raw pointers are a decent abstraction for this, but dereferencing their "empty state" leads to UB.
-With modern OSes, that means segfaults in practice, which are obviously not nice to deal with.
+I wanted a type that can have an empty state or view an object
+with static storage duration. Raw pointers are a decent abstraction
+for this, but dereferencing their "empty state" leads to UB.
+With modern OSes, that means segfaults in practice, which are
+obviously not nice to deal with.
 
-Then there is `std::optional<std::reference_wrapper<T>>`.
-You get a checked accessor, default initialization to its empty state, and pointer-like assignment.
-The problem is the space it takes up.
-Implemenations of `std::optional<T>` are **usually** `alignof(T) + sizeof(T)` bytes.
-A `std::reference_wrapper` is just a wrapper over a raw pointer.
-So on systems with 64b pointers, that `optional` would take up `8 + 8` bytes.
+Then there is `std::optional<std::reference_wrapper<T>>`. You get a
+checked accessor, default initialization to its empty state, and
+pointer-like assignment. The problem is the space it takes up.
+Implementations of `std::optional<T>` are **usually** `alignof(T) + sizeof(T)`
+bytes. A `std::reference_wrapper` is just a wrapper over a raw pointer.
+So on systems with 64-bit pointers, that `optional` would take up `8 + 8` bytes.
 That's 8 more bytes than a pointer for `optional`'s bookkeeping
 (which is 1 byte in practice of which 1 bit is actually used)
 and padding to preserve alignment.
@@ -57,7 +59,8 @@ nsp::NullSafePtr<const int> p2{p1}; // ok
 nsp::NullSafePtr<int> p3{p2};       // compile-time error
 ```
 
-Additionally, `as_const` can be used on pointers to non-`const` to obtain pointers to `const`.
+Additionally, `as_const` can be used on pointers to non-`const`
+to obtain pointers to `const`.
 ```cpp
 int x = 10;
 nsp::NullSafePtr<int> p1{&x};
@@ -74,7 +77,8 @@ nsp::NullSafePtr<const void> p3{p1}; // ok
 nsp::NullSafePtr<void> p4{&x};       // ok
 ```
 
-Derived class pointer to base class pointer conversions work as expected too.
+Derived class pointer to base class pointer conversions
+work as expected too.
 ```cpp
 Derived b;
 nsp::NullSafePtr<Derived> p1{&b};
@@ -84,7 +88,8 @@ nsp::NullSafePtr<Derived> p4{p3};     // compile-time error
 nsp::NullSafePtr<Derived> p5{p3.ptr}; // compile-time error
 ```
 
-Direct conversion to a different non-void or non-base class pointer type (ignoring cv-qualification) is not allowed.
+Direct conversion to a different non-void or non-base class
+pointer type (ignoring cv-qualification) is not allowed.
 ```cpp
 int x = 10;
 nsp::NullSafePtr<int> p1{&x};
@@ -108,7 +113,8 @@ int *y = static_cast<int *>(p) + 10; // ok
 
 ### Void Pointers
 
-A void pointer constitutes any specialization `nsp::NullSafePtr<T>` for which `std::is_void_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
+A void pointer constitutes any specialization `nsp::NullSafePtr<T>` for which
+`std::is_void_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
 
 Void pointers don't support:
   - `operator->()`
@@ -126,7 +132,8 @@ void *p2 = &(*p1)          // compile-time error
 
 ### Function Pointers
 
-A function pointer constitutes any specialization `nsp::NullSafePtr<T>` for which `std::is_function_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
+A function pointer constitutes any specialization `nsp::NullSafePtr<T>` for which
+`std::is_function_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
 
 Function pointers don't support three way comparison.
 Equality comparison is supported.
@@ -145,9 +152,68 @@ int x = p1(10);                       // ok
 int y = p2(10);                       // throws nsp::NullPtrDeref
 ```
 
+### Pointers to Members
+
+While `nsp::NullSafePtr<T>` cannot represent a pointer to a member,
+dereferencing using raw member pointers is supported via an overloaded
+pointer-to-member access operator `operator->*`.
+These operator overloads are conditionally enabled if
+`std::is_class_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` or
+`std::is_union_v<std::pointer_traits<nsp::NullSafePtr<T>>::element_type>` is true.
+
+When accessing a non-static member object through a pointer-to-member,
+both the null-safe pointer and the member pointer must not be null,
+otherwise `nsp::NullPtrDeref` is thrown.
+```cpp
+struct S { int x; };
+
+S s{10};
+
+nsp::NullSafePtr<S> p1{&s};
+nsp::NullSafePtr<S> p2;
+
+int S::*a = &S::x;
+int S::*b = nullptr;
+
+int x = p1->*a;             // ok
+int y = p1->*b;             // throws nsp::NullPtrDeref
+int z = p2->*a;             // throws nsp::NullPtrDeref
+```
+
+Pointers to member functions are also supported. Similarly to the part
+above, when accessing a non-static member function through a pointer-to-member,
+both the null-safe pointer and the member pointer must not be null,
+otherwise `nsp::NullPtrDeref` is thrown.
+
+In this case, `operator->*` returns a lambda function object capturing the
+null-safe pointer and the member function pointer by copy. All null checks
+are deferred and happen in the lambda's call operator `operator()`. Other
+than that, it's just a wrapper over `std::invoke`.
+```cpp
+struct S { void f() { } };
+
+S s;
+
+nsp::NullSafePtr<S> p1{&s};
+nsp::NullSafePtr<S> p2;
+
+void (S::*a)() = &S::f;
+void (S::*b)() = nullptr;
+
+(p1->*a)();                 // ok
+(p1->*b)();                 // throws nsp::NullPtrDeref
+(p2->*a)();                 // throws nsp::NullPtrDeref
+
+auto f1 = p1->*b;           // ok
+auto f2 = p2->*a;           // ok
+f1();                       // throws nsp::NullPtrDeref
+f2();                       // throws nsp::NullPtrDeref
+```
+
 ### Other Members
 
-The relevant `std::pointer_traits<nsp::NullSafePtr<T>>` members are also exposed in `nsp::NullSafePtr<T>` itself.
+The relevant `std::pointer_traits<nsp::NullSafePtr<T>>` members are also exposed
+in `nsp::NullSafePtr<T>` itself.
  - `nsp::NullSafePtr<T>::element_type`
  - `nsp::NullSafePtr<T>::difference_type`
  - `nsp::NullSafePtr<T>::pointer`
@@ -164,10 +230,10 @@ Additional member functions:
  - `nsp::NullSafePtr<T>::value()` => invokes `operator*()`
 
 Comparison functions:
- - `nsp::NullSafePtr<T>::operator==(const NullSafePtr &)`
- - `nsp::NullSafePtr<T>::operator==(std::nullptr_t)`
- - `nsp::NullSafePtr<T>::operator<=>(const NullSafePtr &)`
- - `nsp::NullSafePtr<T>::operator<=>(std::nullptr_t)`
+ - `nsp::operator==(const NullSafePtr<T1> &, const NullSafePtr<T2> &)`
+ - `nsp::operator==(const NullSafePtr<T> &, std::nullptr_t)`
+ - `nsp::operator<=>(const NullSafePtr<T1> &, const NullSafePtr<T2> &)`
+ - `nsp::operator<=>(const NullSafePtr<T> &, std::nullptr_t)`
 
 ## Installation
 
