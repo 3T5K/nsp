@@ -80,7 +80,10 @@ struct Deref<Derived, ElemType>
 };
 
 template <template <typename> class, typename>
-struct DerefMemPtr { };
+struct DerefMemPtr
+{
+    void operator->*(auto) = delete;
+};
 
 template <template <typename> class Derived, typename ElemType>
     requires std::is_class_v<ElemType>
@@ -99,10 +102,10 @@ struct DerefMemPtr<Derived, ElemType>
 
     template <typename T>
         requires std::is_function_v<T>
-    [[nodiscard]] constexpr auto operator->*(T ElemType::*mfn) const noexcept -> auto
+    [[nodiscard]] constexpr auto operator->*(T ElemType::*mfn) const noexcept
     {
         return [nsp{static_cast<const Derived<ElemType> &>(*this)}, mfn]
-            <typename... Args> (Args&&... args)
+            <typename... Args> (Args&&... args) constexpr
             -> std::invoke_result_t<T ElemType::*, ElemType *, Args...>
             requires std::invocable<T ElemType::*, ElemType *, Args...>
         {
@@ -247,6 +250,7 @@ template <typename ElemType>
 
 template <typename T>
 struct std::pointer_traits<nsp::NullSafePtr<T>> : nsp::PointerTo<nsp::NullSafePtr, T>
+                                                // Not fond of inheriting this here.
 {
     using pointer         = nsp::NullSafePtr<T>;
     using element_type    = typename pointer::element_type;
