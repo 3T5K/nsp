@@ -42,6 +42,11 @@ struct NullPtrDeref : std::exception
     }
 };
 
+template <typename ClassType, typename MemberType>
+    requires std::is_class_v<ClassType>
+          || std::is_union_v<ClassType>
+using MemPtr = MemberType ClassType::*;
+
 template <typename From, typename To>
 concept PtrConvTo = std::convertible_to< std::add_pointer_t<From>
                                        , std::add_pointer_t<To>>;
@@ -91,7 +96,7 @@ template <template <typename> class Derived, typename ElemType>
 struct DerefMemPtr<Derived, ElemType>
 {
     template <typename T>
-    [[nodiscard]] constexpr auto operator->*(T ElemType::*p) const -> T &
+    [[nodiscard]] constexpr auto operator->*(const MemPtr<ElemType, T> p) const -> T &
     {
         if (p == nullptr) {
             throw NullPtrDeref{};
@@ -102,12 +107,12 @@ struct DerefMemPtr<Derived, ElemType>
 
     template <typename T>
         requires std::is_function_v<T>
-    [[nodiscard]] constexpr auto operator->*(T ElemType::*mfn) const noexcept
+    [[nodiscard]] constexpr auto operator->*(const MemPtr<ElemType, T> mfn) const noexcept
     {
         return [nsp{static_cast<const Derived<ElemType> &>(*this)}, mfn]
             <typename... Args> (Args&&... args) constexpr
-            -> std::invoke_result_t<T ElemType::*, ElemType *, Args...>
-            requires std::invocable<T ElemType::*, ElemType *, Args...>
+            -> std::invoke_result_t<MemPtr<ElemType, T>, ElemType *, Args...>
+            requires std::invocable<MemPtr<ElemType, T>, ElemType *, Args...>
         {
             if (mfn == nullptr) {
                 throw NullPtrDeref{};

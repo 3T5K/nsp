@@ -4,7 +4,7 @@ A single header null-safe pointer library for C++20.
 
 **Features:**
  - `nullptr` default initialization
- - null-checked dereferencing (uses exceptions)
+ - null-checked dereferencing (throws exceptions)
  - non-owning semantics
  - same size as a raw pointer
  - full constexpr support
@@ -208,6 +208,20 @@ auto f1 = p1->*b;           // ok
 auto f2 = p2->*a;           // ok
 f1();                       // throws nsp::NullPtrDeref
 f2();                       // throws nsp::NullPtrDeref
+```
+
+An alias template `nsp::MemPtr<ClassType, MemberType>` is also provided to avoid
+the somewhat awkward syntax of member pointers. The template is constrained with
+`std::is_class_v<ClassType> || std::is_union_v<ClassType>`. The overloaded
+`operator->*` uses this alias template in its signature.
+```cpp
+struct S { int x; void f() { } };
+
+nsp::MemPtr<S, void()> p1 = &S::f;
+nsp::MemPtr<S, int> p2 = &S::x;
+
+static_assert(std::same_as<decltype(p1), void (S::*)()>); // ok
+static_assert(std::same_as<decltype(p2), int S::*>);      // ok
 ```
 
 ### Other Members
