@@ -230,8 +230,8 @@ template <typename T1, typename T2>
     return lhs.ptr == rhs.ptr;
 };
 
-template <typename ElemType>
-[[nodiscard]] constexpr auto operator==( const NullSafePtr<ElemType> &nsp
+template <typename T>
+[[nodiscard]] constexpr auto operator==( const NullSafePtr<T> &nsp
                                        , std::nullptr_t) noexcept -> bool
 {
     return nsp.ptr == nullptr;
@@ -248,11 +248,11 @@ template <typename T1, typename T2>
     return std::compare_three_way{}(lhs.ptr, rhs.ptr);
 }
 
-template <typename ElemType>
-    requires std::three_way_comparable<typename NullSafePtr<ElemType>::raw_pointer>
-[[nodiscard]] constexpr auto operator<=>( const NullSafePtr<ElemType> &p
+template <typename T>
+    requires std::three_way_comparable<typename NullSafePtr<T>::raw_pointer>
+[[nodiscard]] constexpr auto operator<=>( const NullSafePtr<T> &p
                                         , std::nullptr_t ) noexcept
-    -> std::compare_three_way_result_t<typename NullSafePtr<ElemType>::raw_pointer>
+    -> std::compare_three_way_result_t<typename NullSafePtr<T>::raw_pointer>
 {
     return std::compare_three_way{}(p.ptr, nullptr);
 }
