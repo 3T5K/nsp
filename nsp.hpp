@@ -259,7 +259,7 @@ struct std::pointer_traits<nsp::NullSafePtr<T>>
     using pointer         = nsp::NullSafePtr<T>::pointer;
     using element_type    = pointer::element_type;
     using difference_type = pointer::difference_type;
-    
+
     template <typename U>
     using rebind = pointer::template rebind<U>;
 
@@ -281,7 +281,7 @@ struct std::pointer_traits<nsp::NullSafePtr<T>>
     using pointer         = nsp::NullSafePtr<T>::pointer;
     using element_type    = pointer::element_type;
     using difference_type = pointer::difference_type;
-    
+
     template <typename U>
     using rebind = pointer::template rebind<U>;
 
