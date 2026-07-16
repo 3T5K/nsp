@@ -51,6 +51,9 @@ template <typename From, typename To>
 concept PtrConvTo = std::convertible_to< std::add_pointer_t<From>
                                        , std::add_pointer_t<To>>;
 
+namespace detail
+{
+
 template <template <typename> class Derived, typename ElemType>
 struct Deref
 {
@@ -142,11 +145,13 @@ struct PointerTo<Derived, VoidTp>
     }
 };
 
+} // namespace detail
+
 template <typename T>
     requires (!std::is_reference_v<T>)
-struct NullSafePtr : Deref<NullSafePtr, T>
-                   , DerefMemPtr<NullSafePtr, T>
-                   , PointerTo<NullSafePtr, T>
+struct NullSafePtr : detail::Deref<NullSafePtr, T>
+                   , detail::DerefMemPtr<NullSafePtr, T>
+                   , detail::PointerTo<NullSafePtr, T>
 {
     using element_type    = T;
     using pointer         = NullSafePtr;
@@ -203,7 +208,8 @@ struct NullSafePtr : Deref<NullSafePtr, T>
         return ptr == nullptr;
     }
 
-    [[nodiscard]] constexpr auto as_const() const noexcept -> NullSafePtr<std::add_const_t<element_type>>
+    [[nodiscard]] constexpr auto as_const() const noexcept
+        -> NullSafePtr<std::add_const_t<element_type>>
         requires (!std::is_const_v<element_type>)
     {
         return ptr;
