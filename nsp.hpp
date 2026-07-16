@@ -254,15 +254,41 @@ template <typename ElemType>
 } // namespace nsp
 
 template <typename T>
-struct std::pointer_traits<nsp::NullSafePtr<T>> : nsp::PointerTo<nsp::NullSafePtr, T>
-                                                // Not fond of inheriting this here.
+struct std::pointer_traits<nsp::NullSafePtr<T>>
 {
-    using pointer         = nsp::NullSafePtr<T>;
-    using element_type    = typename pointer::element_type;
-    using difference_type = typename pointer::difference_type;
+    using pointer         = nsp::NullSafePtr<T>::pointer;
+    using element_type    = pointer::element_type;
+    using difference_type = pointer::difference_type;
     
     template <typename U>
-    using rebind = typename pointer::template rebind<U>;
+    using rebind = pointer::template rebind<U>;
+
+    [[nodiscard]] static constexpr auto pointer_to(element_type &v) noexcept -> pointer
+    {
+        return pointer::pointer_to(v);
+    }
+
+    [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> element_type *
+    {
+        return pointer::to_address(p);
+    }
+};
+
+template <typename T>
+    requires std::is_void_v<T>
+struct std::pointer_traits<nsp::NullSafePtr<T>>
+{
+    using pointer         = nsp::NullSafePtr<T>::pointer;
+    using element_type    = pointer::element_type;
+    using difference_type = pointer::difference_type;
+    
+    template <typename U>
+    using rebind = pointer::template rebind<U>;
+
+    [[nodiscard]] static constexpr auto pointer_to(nsp::PtrConvTo<element_type> auto &v) noexcept -> pointer
+    {
+        return pointer::pointer_to(v);
+    }
 
     [[nodiscard]] static constexpr auto to_address(const pointer p) noexcept -> element_type *
     {
