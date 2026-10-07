@@ -24,6 +24,10 @@
 #ifndef LIB_NSP_HPP
 #define LIB_NSP_HPP
 
+#define LIB_NSP_VER_MAJOR 1
+#define LIB_NSP_VER_MINOR 0
+#define LIB_NSP_VER_PATCH 0
+
 #include <exception>
 #include <type_traits>
 #include <concepts>

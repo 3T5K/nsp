@@ -250,6 +250,14 @@ Comparison functions:
  - `nsp::operator<=>(const NullSafePtr<T1> &, const NullSafePtr<T2> &)`
  - `nsp::operator<=>(const NullSafePtr<T> &, std::nullptr_t)`
 
+### Version Macros
+
+```
+LIB_NSP_VER_MAJOR
+LIB_NSP_VER_MINOR
+LIB_NSP_VER_PATCH
+```
+
 ## Installation
 
 Install into `/usr/local/include`:
