@@ -1,7 +1,8 @@
 .PHONY: install uninstall
 
 HEADER := nsp.hpp
-INSDIR := /usr/local/include
+PREFIX := /usr/local
+INSDIR := $(PREFIX)/include
 
 install:
 	install -Dm 644 $(HEADER) -t $(INSDIR)
